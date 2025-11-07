@@ -1,8 +1,5 @@
-flask
-flask-cors
-pymongo
-gunicorn
-joblib
-scikit-learn
-numpy
-pandas
+flask==3.0.3
+numpy==1.26.4
+joblib==1.4.2
+pymongo==4.8.0
+gunicorn==22.0.0
