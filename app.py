@@ -8,41 +8,55 @@ import os
 app = Flask(__name__)
 
 # -----------------------------
-# Load trained model and encoders
+# ✅ Lazy model loading (saves memory)
 # -----------------------------
-model_data = joblib.load("crop_model.pkl.gz")
-model = model_data["model"]
-soil_encoder = model_data["soil_encoder"]
-crop_encoder = model_data["crop_encoder"]
+model = None
+soil_encoder = None
+crop_encoder = None
+
+def load_model():
+    """Load model and encoders once (lazy load)"""
+    global model, soil_encoder, crop_encoder
+    if model is None:
+        model_data = joblib.load("crop_model.pkl")
+        model = model_data["model"]
+        soil_encoder = model_data["soil_encoder"]
+        crop_encoder = model_data["crop_encoder"]
+        print("✅ Model and encoders loaded successfully.")
+
 
 # -----------------------------
-# MongoDB Atlas setup
+# ✅ MongoDB Atlas Connection
 # -----------------------------
+# Use environment variable for security
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://crop_db:<db_password>@crop-prediction.zfyxw9a.mongodb.net/?appName=Crop-Prediction")
+
 client = MongoClient(MONGO_URI)
 db = client["crop_prediction_db"]
 collection = db["predictions"]
 
-@app.route('/')
+@app.route("/")
 def home():
-    return "🌾 Crop Prediction API is Running on Render!"
+    return jsonify({"message": "🌾 Crop Prediction API is Running on Render!"})
 
-@app.route('/predict', methods=['POST'])
+
+# -----------------------------
+# ✅ Prediction API
+# -----------------------------
+@app.route("/predict", methods=["POST"])
 def predict_crop():
     try:
-        data = request.get_json()
+        load_model()  # Load model only once
 
-        # Extract input values
-        temperature = float(data["temperature"])
-        humidity = float(data["humidity"])
-        moisture = float(data["moisture"])
-        soil_type = data["soil"].strip().lower()
+        data = request.get_json(force=True)
+        temperature = float(data.get("temperature"))
+        humidity = float(data.get("humidity"))
+        moisture = float(data.get("moisture"))
+        soil_type = data.get("soil", "").strip().lower()
 
         # Encode soil type
         if soil_type not in soil_encoder.classes_:
-            return jsonify({
-                "error": f"Unknown soil type '{soil_type}'. Expected: {list(soil_encoder.classes_)}"
-            }), 400
+            return jsonify({"error": f"Unknown soil type '{soil_type}'. Expected: {list(soil_encoder.classes_)}"}), 400
 
         soil_encoded = soil_encoder.transform([soil_type])[0]
         X = np.array([[temperature, humidity, moisture, soil_encoded]])
@@ -51,29 +65,35 @@ def predict_crop():
         probs = model.predict_proba(X)[0]
         top_indices = probs.argsort()[-5:][::-1]
         top_crops = crop_encoder.inverse_transform(top_indices)
-        top_crop = top_crops[0]
+        top_probs = [round(float(p * 100), 2) for p in probs[top_indices]]  # Suitability %
 
-        # Save to MongoDB Atlas
+        # MongoDB record
         record = {
             "temperature": temperature,
             "humidity": humidity,
             "soil_moisture": moisture,
             "soil_type": soil_type,
-            "predicted_crop": top_crop,
-            "timestamp": datetime.now().isoformat()
+            "predicted_crop": top_crops[0],
+            "timestamp": datetime.utcnow().isoformat()
         }
         collection.insert_one(record)
 
         return jsonify({
             "status": "success",
-            "top_5_crops": top_crops.tolist(),
-            "top_crop": top_crop
+            "top_crop": top_crops[0],
+            "top_5_crops": [
+                {"crop": crop, "suitability": f"{prob} %"}
+                for crop, prob in zip(top_crops, top_probs)
+            ]
         })
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 400
+        return jsonify({"error": str(e)}), 500
 
+
+# -----------------------------
+# ✅ Entry Point for Render
+# -----------------------------
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
-
-
+    port = int(os.environ.get("PORT", 10000))  # Render default port
+    app.run(host="0.0.0.0", port=port, debug=False)
