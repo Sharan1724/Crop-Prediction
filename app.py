@@ -10,7 +10,7 @@ app = Flask(__name__)
 # -----------------------------
 # Load trained model and encoders
 # -----------------------------
-model_data = joblib.load("crop_model.pkl")
+model_data = joblib.load("crop_model.pkl.gz")
 model = model_data["model"]
 soil_encoder = model_data["soil_encoder"]
 crop_encoder = model_data["crop_encoder"]
@@ -75,4 +75,5 @@ def predict_crop():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
 
