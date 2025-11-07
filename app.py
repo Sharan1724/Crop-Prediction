@@ -18,7 +18,7 @@ crop_encoder = model_data["crop_encoder"]
 # -----------------------------
 # MongoDB Atlas setup
 # -----------------------------
-MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://<username>:<password>@cluster0.mongodb.net/")
+MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://crop_db:<db_password>@crop-prediction.zfyxw9a.mongodb.net/?appName=Crop-Prediction")
 client = MongoClient(MONGO_URI)
 db = client["crop_prediction_db"]
 collection = db["predictions"]
@@ -75,3 +75,4 @@ def predict_crop():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
+
