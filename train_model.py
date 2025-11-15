@@ -43,11 +43,12 @@ def train_and_save_model():
         "model": model,
         "soil_encoder": soil_encoder,
         "crop_encoder": crop_encoder
-    }, "crop_model.pkl")
+    }, "crop_model.pkl.gz")
 
     print("✅ Model and encoders saved as crop_model.pkl")
     print("🌱 Unique Crops:", list(crop_encoder.classes_))
     print("🌍 Unique Soil Types:", list(soil_encoder.classes_))
 
 if __name__ == "__main__":
+
     train_and_save_model()
