@@ -79,13 +79,8 @@ def predict_crop():
         collection.insert_one(record)
 
         return jsonify({
-            "status": "success",
-            "top_crop": top_crops[0],
-            "top_5_crops": [
-                {"crop": crop, "suitability": f"{prob} %"}
-                for crop, prob in zip(top_crops, top_probs)
-            ]
-        })
+    "top_crops": top_crops
+})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -97,6 +92,7 @@ def predict_crop():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
 
 
 
