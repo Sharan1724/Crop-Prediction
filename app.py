@@ -18,7 +18,7 @@ def load_model():
     """Load model and encoders once (lazy load)"""
     global model, soil_encoder, crop_encoder
     if model is None:
-        model_data = joblib.load(open("crop_model.pkl.gz", "rb"))
+        model_data = joblib.load(open("crop_model.pkl", "rb"))
         model = model_data["model"]
         soil_encoder = model_data["soil_encoder"]
         crop_encoder = model_data["crop_encoder"]
@@ -92,6 +92,7 @@ def predict_crop():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
 
 
 
