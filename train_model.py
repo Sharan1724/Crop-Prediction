@@ -43,7 +43,7 @@ def train_and_save_model():
         "model": model,
         "soil_encoder": soil_encoder,
         "crop_encoder": crop_encoder
-    }, "crop_model.pkl.gz")
+    }, "crop_model.pkl", compress='gzip')
 
     print("✅ Model and encoders saved as crop_model.pkl")
     print("🌱 Unique Crops:", list(crop_encoder.classes_))
@@ -52,3 +52,4 @@ def train_and_save_model():
 if __name__ == "__main__":
 
     train_and_save_model()
+
