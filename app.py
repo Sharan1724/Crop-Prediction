@@ -43,7 +43,7 @@ def home():
 # -----------------------------
 # ✅ Prediction API
 # -----------------------------
-@app.route("/predict", methods=["POST"])
+@app.route("/predict", methods=["POST","GET"])
 def predict_crop():
     try:
         load_model()  # Load model only once
@@ -92,6 +92,7 @@ def predict_crop():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)
+
 
 
 
