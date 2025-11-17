@@ -8,7 +8,7 @@ import os
 app = Flask(__name__)
 
 # -----------------------------
-# Lazy model loading
+# Lazy Model Loading
 # -----------------------------
 model = None
 soil_encoder = None
@@ -17,32 +17,37 @@ crop_encoder = None
 def load_model():
     global model, soil_encoder, crop_encoder
     if model is None:
-        # Load gzip compressed model
         model_data = joblib.load("crop_model.pkl.gz")
-
         model = model_data["model"]
         soil_encoder = model_data["soil_encoder"]
         crop_encoder = model_data["crop_encoder"]
-
-        print("✅ Model loaded successfully.")
+        print("Model loaded successfully on Railway")
 
 
 # -----------------------------
-# MongoDB Connection
+# MongoDB Connection (Railway)
 # -----------------------------
-MONGO_URI = os.getenv(
-    "MONGO_URI",
-    "mongodb+srv://crop_db:<db_password>@crop-prediction.zfyxw9a.mongodb.net/?appName=Crop-Prediction"
-)
+MONGO_URI = os.getenv("MONGO_URI")  # must be set in Railway Variables
 
-client = MongoClient(MONGO_URI)
-db = client["crop_prediction_db"]
-collection = db["predictions"]
+client = None
+collection = None
+
+try:
+    if MONGO_URI:
+        client = MongoClient(MONGO_URI)
+        db = client["crop_prediction_db"]
+        collection = db["predictions"]
+        print("Connected to MongoDB")
+    else:
+        print("⚠️ MONGO_URI not set. Mongo logging disabled.")
+except Exception as e:
+    print("MongoDB connection failed:", str(e))
+    collection = None
 
 
 @app.route("/")
 def home():
-    return jsonify({"message": "🌾 Crop Prediction API is Running!"})
+    return jsonify({"message": "Crop Prediction API is Running on Railway!"})
 
 
 # -----------------------------
@@ -78,24 +83,26 @@ def predict_crop():
 
         # Sort highest → lowest
         sorted_idx = np.argsort(-probs)
-
-        # ALWAYS return exactly 5 crops
         top_indices = sorted_idx[:5]
 
         # Convert numeric class IDs → crop names
         top_crops = crop_encoder.inverse_transform(top_indices)
 
-        # Save to MongoDB
-        collection.insert_one({
-            "temperature": temperature,
-            "humidity": humidity,
-            "soil_moisture": moisture,
-            "soil_type": soil_type,
-            "predicted_crop": top_crops[0],
-            "timestamp": datetime.utcnow().isoformat()
-        })
+        # Save to MongoDB only if available
+        if collection:
+            try:
+                collection.insert_one({
+                    "temperature": temperature,
+                    "humidity": humidity,
+                    "soil_moisture": moisture,
+                    "soil_type": soil_type,
+                    "predicted_crop": top_crops[0],
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+            except Exception as e:
+                print("MongoDB insert failed:", e)
 
-        # Send list (MIT App Inventor friendly)
+        # Return results for MIT App Inventor
         return jsonify({
             "top_crops": list(top_crops)
         })
@@ -105,9 +112,8 @@ def predict_crop():
 
 
 # -----------------------------
-# Render Entry Point
+# Render / Railway Run
 # -----------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=False)
-
+    port = int(os.environ.get("PORT", 8080))  # Railway provides PORT
+    app.run(host="0.0.0.0", port=port)
