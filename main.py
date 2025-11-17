@@ -1,14 +1,12 @@
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
-from pymongo import MongoClient
-from datetime import datetime
 import os
 
 app = Flask(__name__)
 
 # -----------------------------
-# Lazy Model Loading
+# Lazy model loading
 # -----------------------------
 model = None
 soil_encoder = None
@@ -21,33 +19,12 @@ def load_model():
         model = model_data["model"]
         soil_encoder = model_data["soil_encoder"]
         crop_encoder = model_data["crop_encoder"]
-        print("Model loaded successfully on Railway")
-
-
-# -----------------------------
-# MongoDB Connection (Railway)
-# -----------------------------
-MONGO_URI = os.getenv("MONGO_URI")  # must be set in Railway Variables
-
-client = None
-collection = None
-
-try:
-    if MONGO_URI:
-        client = MongoClient(MONGO_URI)
-        db = client["crop_prediction_db"]
-        collection = db["predictions"]
-        print("Connected to MongoDB")
-    else:
-        print("⚠️ MONGO_URI not set. Mongo logging disabled.")
-except Exception as e:
-    print("MongoDB connection failed:", str(e))
-    collection = None
+        print("✅ Model loaded successfully.")
 
 
 @app.route("/")
 def home():
-    return jsonify({"message": "Crop Prediction API is Running on Railway!"})
+    return jsonify({"message": "🌾 Crop Prediction API is Running!"})
 
 
 # -----------------------------
@@ -83,26 +60,14 @@ def predict_crop():
 
         # Sort highest → lowest
         sorted_idx = np.argsort(-probs)
+
+        # Always send exactly 5 crops
         top_indices = sorted_idx[:5]
 
-        # Convert numeric class IDs → crop names
+        # Decode crops
         top_crops = crop_encoder.inverse_transform(top_indices)
 
-        # Save to MongoDB only if available
-        if collection:
-            try:
-                collection.insert_one({
-                    "temperature": temperature,
-                    "humidity": humidity,
-                    "soil_moisture": moisture,
-                    "soil_type": soil_type,
-                    "predicted_crop": top_crops[0],
-                    "timestamp": datetime.utcnow().isoformat()
-                })
-            except Exception as e:
-                print("MongoDB insert failed:", e)
-
-        # Return results for MIT App Inventor
+        # Return result to MIT App Inventor
         return jsonify({
             "top_crops": list(top_crops)
         })
@@ -112,8 +77,8 @@ def predict_crop():
 
 
 # -----------------------------
-# Render / Railway Run
+# Railway Entry Point
 # -----------------------------
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))  # Railway provides PORT
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port, debug=False)
